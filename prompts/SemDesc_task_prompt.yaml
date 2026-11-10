@@ -1,0 +1,267 @@
+specified_dimension_description_task:
+  standard_description_task: |
+    You are a materials science expert specializing in phase diagram interpretation.
+    Your task is to describe a phase diagram image from a materials science paper as a materials science expert.
+
+    The image may be a binary phase diagram, ternary phase diagram, isothermal section, vertical section, liquidus projection, liquidus surface, or element-rich region.
+
+    # Selected dimensions:
+    You must describe the image only from the selected dimensions listed below:
+
+    {SELECTED_DIMENSIONS}
+
+    # Dimension definitions
+
+    {DIMENSION_DEFINITIONS}
+
+    # Rules
+
+    1. For each selected dimension, provide a complete and detailed description as much as possible.
+    2. After describing each selected dimension separately, generate one comprehensive description that summarizes and integrates the information from all selected dimensions.
+    3. The comprehensive description must be based only on the selected dimensions and must not introduce information that is not visible in the image.
+    4. Preserve chemical formulas, phase labels, Greek letters, subscripts, superscripts, and mathematical symbols as faithfully as possible. Use LaTeX-style notation whenever possible, for example: Al$_2$O$_3$, Ni$_5$Zr, $\alpha$, $\beta$, $\gamma$, $\alpha$-Ti, L + $\beta$, and T$_m$.
+    5. Never output an empty description for any selected dimension. For every selected dimension, make the best possible description strictly from visible image evidence. If the dimension cannot be fully determined, describe the relevant observable evidence, partial information, uncertainty, or limitation instead of leaving the field empty. Do not hallucinate information that is not visible in the image.
+    6. Finally, generate a comprehensive_description that fully summarizes the selected dimensions without compressing or omitting important visible information.
+    7. Output only valid JSON. Do not include any explanation outside the JSON.
+
+    Return JSON in the following schema:
+
+    {OUTPUT_SCHEMA}
+
+
+  unlimited_description_task: |
+      You are given a phase diagram image from a materials science paper.
+      Describe the main information shown in the image.
+
+      Rules:
+      Focus on the most important visible features and provide a concise description.
+
+      Return JSON in the following schema:
+
+      {
+        "diagram_description": <string>
+      }
+
+
+  few_shot_description_task:
+    one_shot_description_task: |
+      You are a materials science expert specializing in phase diagram interpretation.
+      Your task is to describe a phase diagram image from a materials science paper as a materials science expert.
+
+      The image may be a binary phase diagram, ternary phase diagram, isothermal section, vertical section, liquidus projection, liquidus surface, or element-rich region.
+
+      # Selected dimensions:
+      You must describe the image only from the selected dimensions listed below:
+
+      {SELECTED_DIMENSIONS}
+
+      # Dimension definitions
+
+      {DIMENSION_DEFINITIONS}
+
+      ## EXAMPLE
+
+      INPUT:
+      - Input image: 
+        The image 1.
+      - Selected dimensions:
+        materials_system
+        diagram_type
+        diagram_completeness
+        phase_regions_boundaries
+        invariant_reactions
+
+      OUT:
+      - selected_dimensions
+        materials_system
+        diagram_type
+        diagram_completeness
+        phase_regions_boundaries
+        invariant_reactions
+      - descriptions
+        - materials_system
+          The description concerns the partial ternary system (Sb)–SbSn–(Pb), involving the phases (Pb), (Sb), (Sn), SbSn(HT), and SbSn(LT).
+        - diagram_type
+          The diagram shows the liquidus surface at the Pb-rich corner of the ternary system and contains internal boundaries represented by monovariant curves associated with eutectic separations and peritectic reactions.
+        - diagram_completeness
+          The diagram represents a partial ternary system and specifically reports the liquidus surface at the Pb-rich corner rather than the entire ternary system.
+        - phase_regions_boundaries
+          The internal boundaries include the monovariant curves e₁E and e₂E, which represent eutectic separations of (Pb) and (Sb), and of (Pb) and SbSn(LT), respectively. The curves p₁U₁, p₂U₁, and p₃U₂ are associated with peritectic reactions. Along U₁E, eutectic separation of (Sb) and SbSn(LT) occurs, while along e₂U₂ and U₂e₃, eutectic separations of (Pb) and SbSn(LT), and of (Pb) and (Sn), occur, respectively.
+        - invariant_reactions
+          The system contains a ternary eutectic E with an accepted temperature of 240 °C and a composition of 12 wt.% Sb and 4.0 wt.% Sn. Along p₁U₁, the peritectic reaction (Sb) + L ⇌ SbSn(HT) occurs; along p₂U₁, the peritectic reaction L + SbSn(HT) ⇌ SbSn(LT) occurs; and along p₃U₂, the peritectic reaction SbSn(LT) + L ⇌ (Sn) occurs. Eutectic separations occur along e₁E for (Pb) and (Sb), along e₂E for (Pb) and SbSn(LT), along U₁E for (Sb) and SbSn(LT), along e₂U₂ for (Pb) and SbSn(LT), and along U₂e₃ for (Pb) and (Sn). From U₁, the liquid separates into (Sb) and SbSn(LT) until solidification ends at the ternary eutectic point E.
+      - comprehensive_description
+        The partial ternary system (Sb)-SbSn-(Pb) is known to contain a ternary eutectic E. The accepted eutectic temperature and composition are 240 °C, 12 wt.% Sb, and 4.0 wt.% Sn. The figure reports the liquidus surface at the Pb-rich corner. Considering the internal boundaries of these areas, the monovariant curves e₁E and e₂E represent the eutectic separations of (Pb) and (Sb), and of (Pb) and SbSn(LT), respectively. Along p₁U₁, the peritectic reaction (Sb) + L ⇌ SbSn(HT) occurs; along p₂U₁, the peritectic reaction L + SbSn(HT) ⇌ SbSn(LT) occurs; along U₁E, the eutectic separation of (Sb) and SbSn(LT) occurs; along p₃U₂, the peritectic reaction SbSn(LT) + L ⇌ (Sn) occurs. Eutectic separations of (Pb) and SbSn(LT), and of (Pb) and (Sn), occur along the monovariant curves e₂U₂ and U₂e₃, respectively. From U₁, the liquid separates into (Sb) + SbSn(LT) until solidification ends at the ternary eutectic point E.
+
+      # Rules
+      1. For each selected dimension, provide a complete and detailed description as much as possible.
+      2. After describing each selected dimension separately, generate one comprehensive description that summarizes and integrates the information from all selected dimensions.
+      3. The comprehensive description must be based only on the selected dimensions and must not introduce information that is not visible in the image.
+      4. Preserve chemical formulas, phase labels, Greek letters, subscripts, superscripts, and mathematical symbols as faithfully as possible using plain text and Unicode, for example: Al₂O₃, Ni₅Zr, α, β, γ, α-Ti, L + β, and Tₘ.
+      5. Never output an empty description for any selected dimension. For every selected dimension, make the best possible description strictly from visible image evidence. If the dimension cannot be fully determined, describe the relevant observable evidence, partial information, uncertainty, or limitation instead of leaving the field empty. Do not hallucinate information that is not visible in the image.
+      6. Finally, generate a comprehensive_description that fully summarizes the selected dimensions without compressing or omitting important visible information.
+      7. Output only valid JSON. Do not include any explanation outside the JSON.
+
+      Return JSON in the following schema:
+
+      {OUTPUT_SCHEMA}
+
+    three_shot_description_task: |
+      You are a materials science expert specializing in phase diagram interpretation.
+      Your task is to describe a phase diagram image from a materials science paper as a materials science expert.
+
+      The image may be a binary phase diagram, ternary phase diagram, isothermal section, vertical section, liquidus projection, liquidus surface, or element-rich region.
+
+      # Selected dimensions:
+      You must describe the image only from the selected dimensions listed below:
+
+      {SELECTED_DIMENSIONS}
+
+      # Dimension definitions
+
+      {DIMENSION_DEFINITIONS}
+
+      ## EXAMPLE 1
+
+      INPUT:
+      - Input image: 
+        The image 1.
+      - Selected dimensions:
+        materials_system
+        diagram_type
+        diagram_completeness
+        phase_regions_boundaries
+        invariant_reactions
+
+      OUT:
+      - selected_dimensions
+        materials_system
+        diagram_type
+        diagram_completeness
+        phase_regions_boundaries
+        invariant_reactions
+      - descriptions
+        - materials_system
+          The description concerns the partial ternary system (Sb)–SbSn–(Pb), involving the phases (Pb), (Sb), (Sn), SbSn(HT), and SbSn(LT).
+        - diagram_type
+          The diagram shows the liquidus surface at the Pb-rich corner of the ternary system and contains internal boundaries represented by monovariant curves associated with eutectic separations and peritectic reactions.
+        - diagram_completeness
+          The diagram represents a partial ternary system and specifically reports the liquidus surface at the Pb-rich corner rather than the entire ternary system.
+        - phase_regions_boundaries
+          The internal boundaries include the monovariant curves e₁E and e₂E, which represent eutectic separations of (Pb) and (Sb), and of (Pb) and SbSn(LT), respectively. The curves p₁U₁, p₂U₁, and p₃U₂ are associated with peritectic reactions. Along U₁E, eutectic separation of (Sb) and SbSn(LT) occurs, while along e₂U₂ and U₂e₃, eutectic separations of (Pb) and SbSn(LT), and of (Pb) and (Sn), occur, respectively.
+        - invariant_reactions
+          The system contains a ternary eutectic E with an accepted temperature of 240 °C and a composition of 12 wt.% Sb and 4.0 wt.% Sn. Along p₁U₁, the peritectic reaction (Sb) + L ⇌ SbSn(HT) occurs; along p₂U₁, the peritectic reaction L + SbSn(HT) ⇌ SbSn(LT) occurs; and along p₃U₂, the peritectic reaction SbSn(LT) + L ⇌ (Sn) occurs. Eutectic separations occur along e₁E for (Pb) and (Sb), along e₂E for (Pb) and SbSn(LT), along U₁E for (Sb) and SbSn(LT), along e₂U₂ for (Pb) and SbSn(LT), and along U₂e₃ for (Pb) and (Sn). From U₁, the liquid separates into (Sb) and SbSn(LT) until solidification ends at the ternary eutectic point E.
+      - comprehensive_description
+        The partial ternary system (Sb)-SbSn-(Pb) is known to contain a ternary eutectic E. The accepted eutectic temperature and composition are 240 °C, 12 wt.% Sb, and 4.0 wt.% Sn. The figure reports the liquidus surface at the Pb-rich corner. Considering the internal boundaries of these areas, the monovariant curves e₁E and e₂E represent the eutectic separations of (Pb) and (Sb), and of (Pb) and SbSn(LT), respectively. Along p₁U₁, the peritectic reaction (Sb) + L ⇌ SbSn(HT) occurs; along p₂U₁, the peritectic reaction L + SbSn(HT) ⇌ SbSn(LT) occurs; along U₁E, the eutectic separation of (Sb) and SbSn(LT) occurs; along p₃U₂, the peritectic reaction SbSn(LT) + L ⇌ (Sn) occurs. Eutectic separations of (Pb) and SbSn(LT), and of (Pb) and (Sn), occur along the monovariant curves e₂U₂ and U₂e₃, respectively. From U₁, the liquid separates into (Sb) + SbSn(LT) until solidification ends at the ternary eutectic point E.
+
+      ## EXAMPLE 2
+
+      INPUT:
+      - Input image: 
+        The image 2.
+      - Selected dimensions:
+        materials_system
+        diagram_type
+        diagram_completeness
+        phase_regions_boundaries
+        invariant_reactions
+
+      OUT:
+      - selected_dimensions
+        materials_system
+        diagram_type
+        diagram_completeness
+        phase_regions_boundaries
+        invariant_reactions
+      - descriptions
+        - materials_system
+          The description concerns the Fe-Ni-Ti ternary system in the Ti-rich region above 50 at.% Ti. The investigated alloys include Fe-Ti, Ni-Ti, and Fe-Ni-Ti compositions, with the ternary alloys examined along three constant Ni:Fe atomic ratios of 1:3, 1:1, and 3:1.
+        - diagram_type
+          Three partial isopleths were established for the Fe-Ni-Ti ternary system along lines of constant Ni:Fe atomic ratio, specifically Ni:Fe = 1:3, 1:1, and 3:1. The description focuses particularly on the Ni:Fe = 1:1 isopleth and discusses phase equilibria as a function of temperature and Ti composition.
+        - diagram_completeness
+          The diagrams are partial isopleths restricted to the Ti-rich region above 50 at.% Ti rather than representations of the full Fe-Ni-Ti composition space. At lower temperatures below 800°C, the phase equilibria in the three isopleths are described as incomplete, and the boundaries of some two- or three-phase regions are tentative.
+        - phase_regions_boundaries
+          In the Ni:Fe = 1:1 isopleth, a three-phase equilibrium region containing L + βTi + (Fe,Ni)Ti (β1) is present at higher temperatures. The β1 phase is described as a solid solution of FeTi and NiTi. The L + βTi + β1 three-phase equilibrium extends from the Fe-Ti binary toward the Ni-Ti binary as the Ti content increases. At lower temperatures, the phase equilibria are less completely established. Boundaries of two- or three-phase regions are represented by dashed lines and are considered tentative rather than definitive.
+        - invariant_reactions
+          The L + βTi + β1 three-phase equilibrium in the Ti-rich region is associated with the eutectic reaction e4 originating from the Fe-Ti binary system. The results indicate that this three-phase equilibrium advances toward the Ni-Ti binary with increasing Ti content. A four-phase reaction designated U4 is also reported at 650°C, involving βTi + δ ↔ αTi + β1.
+      - comprehensive_description
+        The new ternary results at Ti > 50 at.% are from relevant research. Research arc melted Fe-Ti, Ni-Ti, and Fe-Ni-Ti alloys containing >50 at.% Ti under an inert environment. N-00 grade electrolytic Ni, Armco Fe, and iodide Ti were used. The FeNi-Ti alloys were prepared with varying Ti compositions along three different Ni:Fe atom ratios: 1:3, 1:1, and 3:1. The alloys in the as-cast as well as in the annealed states (800°C/100h and then 600°C/100h) were characterized through microstructural analyses, x-ray diffraction and thermal analyses. Three partial isopleths were established along the three lines of constant Ni:Fe ratio. The isopleth with Ni:Fe = 1:1 shows at the higher temperatures, three-phase equilibrium of L + βTi + (Fe,Ni)Ti (β1). The (Fe, Ni) Ti (β1) phase is the solid solution of FeTi and NiTi in each other. Since, in the >50 at.% Ti region, the L + βTi + β1, three-phase equilibrium originates from the eutectic reaction e4 in the Fe-Ti binary systems, the present results suggest that the three-phase equilibrium from the Fe-Ti binary advances toward the Ni-Ti binary as the Ti content of alloys increases. At the lower temperatures (<800°C), the phase equilibria in the three isopleths seem incomplete. The significant data at the lower temperatures are the presence of a four-phase reaction U4: βTi + δ ↔ αTi + β1 at 650°C. The boundaries of the two- or three-phase regions, given by dashed lines, possibly indicate what is to be expected but should be considered tentative.
+
+      ## EXAMPLE 3
+
+      INPUT:
+      - Input image: 
+        The image 3.
+      - Selected dimensions:
+        materials_system
+        phase_regions_boundaries
+        invariant_reactions
+
+      OUT:
+      - selected_dimensions
+        materials_system
+        phase_regions_boundaries
+        invariant_reactio
+      - descriptions
+        - materials_system
+          The phase diagram description concerns the Zr-Nb binary system, focusing specifically on the solubility of Nb in alpha Zr and the Zr-rich composition range. The solubility of Nb in alpha Zr is evaluated as 0.6 at.% Nb in the temperature range associated with the monotectoid reaction.
+        - phase_regions_boundaries
+          The description discusses the alpha Zr phase region and the alpha + beta two-phase region, with particular attention to the alpha/(alpha + beta) phase boundary. The alpha/beta transition temperature in pure Zr is taken as 863 °C. The text notes that previously reported alpha/(alpha + beta) boundary compositions were considered too high in Nb content, possibly because true equilibrium was not achieved during resistivity measurements performed with increasing temperature. The composition of alpha Zr at the monotectoid reaction is taken as 0.6 at.% Nb.
+        - invariant_reactio
+          A monotectoid reaction is explicitly referenced in the description. In the temperature range of this reaction, the solubility of Nb in alpha Zr is evaluated as 0.6 at.% Nb, and the composition of alpha Zr at the monotectoid reaction is likewise taken to be 0.6 at.% Nb. The provided text does not specify the full reaction equation, all participating phases, or the exact monotectoid reaction temperature.
+      - comprehensive_description
+        Solubility of Nb in α Zr. Wide discrepancies exist regarding the solubility of Nb in α Zr. The experimental data of relevant research are considered here to be the most reliable. Thus, the solubility of Nb in α Zr is evaluated at 0.6 at.% Nb in the temperature range of the monotectoid reaction. The temperature accepted for the α/β transition in pure Zr is 863 °C. The solubility of Nb in α Zr is essentially that suggested by research. The numerical values adopted here are given in the section "Numerical Values for Phase Boundaries". Research reported the α/(α + β) boundary at too high Nb contents; this could be due to the lack of true equilibrium when resistivity data were obtained with rising temperature. The composition of (α Zr) at the monotectoid reaction is taken to be 0.6 at.% Nb.
+
+      # Rules
+      1. For each selected dimension, provide a complete and detailed description as much as possible.
+      2. After describing each selected dimension separately, generate one comprehensive description that summarizes and integrates the information from all selected dimensions.
+      3. The comprehensive description must be based only on the selected dimensions and must not introduce information that is not visible in the image.
+      4. Preserve chemical formulas, phase labels, Greek letters, subscripts, superscripts, and mathematical symbols as faithfully as possible. Use LaTeX-style notation whenever possible, for example: Al$_2$O$_3$, Ni$_5$Zr, $\alpha$, $\beta$, $\gamma$, $\alpha$-Ti, L + $\beta$, and T$_m$.
+      5. Never output an empty description for any selected dimension. For every selected dimension, make the best possible description strictly from visible image evidence. If the dimension cannot be fully determined, describe the relevant observable evidence, partial information, uncertainty, or limitation instead of leaving the field empty. Do not hallucinate information that is not visible in the image.
+      6. Finally, generate a comprehensive_description that fully summarizes the selected dimensions without compressing or omitting important visible information.
+      7. Output only valid JSON. Do not include any explanation outside the JSON.
+
+      Return JSON in the following schema:
+
+      {OUTPUT_SCHEMA}
+
+
+DIMENSION_DEFINITIONS:
+  materials_system: |
+    ## Phase Diagram System
+    Describe the material system shown in the phase diagram, such as binary, ternary, or multicomponent system. Identify the main elements, compounds, or composition system involved.
+
+  diagram_type: |
+    ## Phase Diagram Type
+    Describe the diagram type and graphical form, such as isothermal section, vertical section, liquidus projection, liquidus surface, or combined diagram.
+    Also describe the visible axes, units, and overall layout when available.
+
+  diagram_completeness: |
+    ## Phase Diagram Completeness
+    Describe whether the phase diagram is complete or partial. Explain whether the diagram covers the full composition range of the material system or only a specific composition interval, subsystem, or element-rich region.
+
+  phase_regions_boundaries: |
+    ## Phase Region and Phase Boundary Identification
+    Describe the visible phase regions and phase boundaries, including single-phase regions, two-phase regions, three-phase regions, and their topological relations.
+    Identify important boundaries such as liquidus, solidus, solvus, miscibility-gap boundaries, and invariant horizontal lines when visible.
+  
+  invariant_reactions: |
+    ## Invariant Reactions
+    Describe visible or directly indicated invariant reactions, including congruent melting, eutectic, eutectoid, monotectic, metatectic, peritectic, peritectoid, and syntectic reactions. 
+    For each reaction, describe the reaction type, temperature, composition, participating phases, and local phase-boundary topology.
+
+    Use the following reaction definitions as guidance:
+    - **Congruent Melting**: a liquid transforms directly into a single solid phase, or a solid melts directly into a liquid with the same composition. The reaction has one phase on each side, such as L -> A or A -> L. Its topology is a continuous solidification or melting relation between the liquid region and the solid region, usually bounded by liquidus and solidus lines with an L + A two-phase region.
+
+    - **Eutectic Reaction**: one liquid transforms into two solid phases at a fixed temperature, written as L -> A + B. Its topology usually shows two liquidus boundaries converging to a eutectic point, with an A + B two-phase region below a horizontal eutectic isotherm.
+
+    - **Eutectoid Reaction**: one solid phase decomposes into two different solid phases at a fixed temperature, written as A -> B + C. Its topology usually shows a high-temperature single solid phase ending at the eutectoid point, with a B + C two-phase region below a horizontal eutectoid isotherm.
+
+    - **Monotectic Reaction**: one liquid decomposes into another liquid and one solid phase at a fixed temperature, written as L1 -> L2 + A. Its topology involves L1, L2, and A phase regions meeting near a monotectic isotherm, often related to liquid immiscibility.
+
+    - **Metatectic Reaction**: one solid phase transforms into a liquid and another solid phase on heating, written as A -> L + B. Its topology shows a single solid phase ending at a metatectic isotherm and connecting to an L + B two-phase region.
+
+    - **Peritectic Reaction**: one liquid and one solid phase react to form a new solid phase at a fixed temperature, written as L + A -> B. Its topology usually shows the L + A two-phase region ending at a peritectic isotherm and connecting to the newly formed single solid phase B.
+
+    - **Peritectoid Reaction**: two solid phases react to form another solid phase at a fixed temperature, written as A + B -> C. Its topology shows the A + B two-phase region ending at a peritectoid isotherm and connecting to the newly formed single solid phase C.
+
+    - **Syntectic Reaction**: two different liquids react to form one solid phase at a fixed temperature, written as L1 + L2 -> A. Its topology involves L1, L2, and solid A meeting near a syntectic isotherm, representing two liquid phases jointly forming a solid phase.

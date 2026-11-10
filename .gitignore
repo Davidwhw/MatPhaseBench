@@ -1,0 +1,24 @@
+# ===== 数据集图片：不归档，按 README 说明单独获取 =====
+dataset/MatPhaseBench-SemDesc/phase_images/
+dataset/MatPhaseBench-SemDesc/fewshot_images/
+
+# ===== BERTScore 权重：不归档，见 BERTScore_model/README.md =====
+BERTScore_model/*/
+!BERTScore_model/README.md
+
+# ===== 运行时产物 =====
+model_output/
+log_storage/
+*.partial.json
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# ===== 系统 =====
+.DS_Store
+Thumbs.db

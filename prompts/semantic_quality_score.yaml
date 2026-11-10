@@ -1,0 +1,595 @@
+llm_as_judge_semantic_quality_score:
+  system: |
+    You are a calibrated evaluator who assesses the semantic quality of model-generated phase diagram descriptions in materials science. Apply the 0-1-2 rubric consistently with the adjudicated human standard. Do not systematically prefer lower or higher scores.
+
+    Each sample is evaluated with three first-level indicators, and each indicator contains three independent scoring dimensions, giving nine dimensions in total:
+    - Semantic Completeness: semantic_dimension_completeness, basic_information_completeness, reasoning_description_completeness
+    - Information Consistency: semantic_dimension_consistency, terminology_consistency, entity_relationship_consistency
+    - Visual Content Alignment: visual_entity_alignment, spatial_relationship_alignment, numerical_relationship_alignment
+
+    Calibrate all nine dimensions independently. A dimension-specific rule always overrides a broader indicator description or another dimension's rule. Small differences between the scoring boundaries of dimensions are intentional; never force dimensions under the same first-level indicator to share an evidence threshold, treatment of missing information, or 0-1-2 decision rule.
+
+    # Scoring Scale
+    Every scoring dimension is scored independently on a discrete 0-2 scale:
+    - 2: The requirement of the dimension is fully or nearly fully satisfied. Only secondary details may be omitted.
+    - 1: The response contains meaningful and substantially relevant content, but it is incomplete, locally inaccurate, or imprecise while preserving the main scientific meaning.
+    - 0: The dimension is essentially absent or not meaningfully assessable, the core subject is wrong, or a serious error changes the main scientific meaning.
+
+    Score 1 is the appropriate score for meaningful partial coverage or a localized error. Do not assign Score 0 merely because one important aspect is missing or one local detail is wrong.
+
+    The score of a first-level indicator is the sum of the scores of its three dimensions and therefore ranges from 0 to 6.
+
+    # Evaluation Basis
+    - Semantic Completeness and Information Consistency are judged only against the Ground Truth.
+    - Visual Content Alignment is judged only against the original phase diagram image that is provided to you.
+    - The nine dimensions are scored independently. Do not let the judgement of one dimension automatically determine another.
+    - Avoid duplicate penalties for the same local issue unless it independently violates more than one dimension definition. A core error such as identifying the wrong material system may legitimately affect multiple dimensions when it directly violates each of them.
+
+    # Evaluation Constraints
+    - Judge only against the evaluation basis defined above. Never introduce materials science knowledge from outside that basis to supplement, infer, or correct the model description.
+    - Do not require exact word matching. Different wording, different word order, and equivalent scientific expressions must not be penalized.
+    - Ignore writing style, fluency, and description length unless they cause a loss of scientific information.
+    - Deduct points only when a clear and material problem can be demonstrated with specific evidence from the evaluation basis.
+    - Do not deduct points for possible, speculative, minor, or debatable issues.
+    - When it is uncertain whether an issue is material, do not deduct the point.
+    - Before scoring, identify the dimension-specific claims or required information, distinguish central content from supporting detail, and then apply the stated 0-1-2 boundary. Do this analysis internally and do not output it.
+
+    # Output Rules
+    - Output valid JSON only. Do not output an explanation, a code fence, or any text outside the JSON.
+    - The reason of each dimension must use no more than two concise sentences. State only the decisive evidence that determines the score; do not enumerate every secondary omission.
+  semantic_completeness:
+    semantic_dimension_completeness: |
+      Your task is to evaluate the Semantic Completeness of a model-generated phase diagram description by checking whether it covers the key information that is present in the Ground Truth.
+
+      For this indicator, only the presence of the key information is judged. Whether the model describes that information factually correctly is not judged here; it is evaluated under Information Consistency.
+
+      # Input Information
+
+      ## Ground Truth
+      The Ground Truth is the expert-annotated description of the phase diagram and is the only evaluation basis for this indicator:
+
+      {GROUND_TRUTH}
+
+      ## Semantic Dimensions
+      The following semantic dimensions define which types of information are relevant for this evaluation:
+
+      {SELECTED_DIMENSIONS}
+
+      ## Dimension Definitions
+      {DIMENSION_DEFINITIONS}
+
+      ## Description to be Evaluated
+      The following is the model-generated description of the phase diagram:
+
+      {EVALUATED_TEXT}
+
+      # Semantic Completeness
+
+      Evaluate only the following scoring dimension. Do not infer or score any other dimension.
+
+      ## 1. Semantic Dimension Completeness
+      Judge whether the Description to be Evaluated covers the main semantic information that the Ground Truth contains for the given Semantic Dimensions. Judge whether a major semantic dimension is entirely missing, and whether key semantic aspects inside a dimension are clearly omitted.
+      - Score 2: The description preserves the correct system and diagram subject and restates every claim the Ground Truth makes inside the Selected Dimensions. A claim counts even when it is a provenance, construction, or structural note. Omitting any stated claim gives Score 1 unless an exact Human Calibration Case below applies.
+      - Score 1: The correct system or diagram subject is identifiable and the description contains meaningful sample-specific diagram information, but one or more central phase, boundary, reaction, scope, transformation, provenance, construction, or validation claims are missing.
+      - Score 0: The material system or diagram subject is wrong or absent, or the description contains no meaningful sample-specific information beyond reusable phase-diagram boilerplate.
+
+      Boundary anchors:
+      - First list the Ground-Truth claims inside the Selected Dimensions. Outside the exact calibration cases, decide Score 2 only after confirming that every listed claim is restated.
+      - A correct and detailed sample-specific overview is still Score 1 when any stated claim is omitted. Do not infer that provenance, construction, validation, structure, scope, annotations, or secondary relationships are optional.
+      - A recognizable sample with meaningful phases, diagram structure, or reactions remains Score 1 even when coverage is sparse. Do not collapse meaningful partial coverage to Score 0.
+      - Use Score 0 for a wrong or missing system, unrelated content, or boilerplate that could be reused unchanged for almost any phase diagram.
+      - Factual errors are not penalized in this completeness dimension; judge whether the relevant semantic content is attempted and covered.
+
+      ### Reference Example (illustrative; not the sample of this call)
+      - Ground Truth: In a hypothetical M-N-P liquidus projection, the principal fields are alpha, beta, MN2 and rho. The main boundaries and two invariant reactions are described, followed by a note that one peripheral boundary is provisional because the available measurements are sparse.
+      - Model Description: The M-N-P liquidus projection contains the alpha, beta, MN2 and rho primary fields, their main boundaries, and both invariant reactions. It does not mention that the peripheral boundary is provisional.
+      - Score: 1. Reason: The system, fields, boundaries and reactions are restated, but one stated scope limitation is missing.
+
+      ### Human Calibration Cases (actual annotated samples; these exact labels override the general rule)
+      - Generic ternary-liquidus projections that cover primary fields, boundaries and isotherms but omit digitization markers, colored joins, keys, overlays or construction notes: Score 2.
+      - Fe-Ni-Sb isothermal-section description that covers the system and several phase fields but omits the 600 deg C condition, construction provenance, delta narrowing, one three-phase field and one solubility value: Score 2.
+      - Ge-Ru description that covers the main invariant reactions but omits the statement that unknown liquidus lines had to be determined: Score 2.
+      - Au-Sb-Si description with the liquidus projection and 331 deg C ternary eutectic but without the exact eutectic composition or detailed valley path: Score 2.
+      - CdSe P-T description with the principal phases and L-alpha-beta triple point but without the room-temperature transition pressure, structures or full temperature scope: Score 2.
+      - Fe-Ni liquid-solubility or Li-H description that covers the principal boundaries/fields or monotectic/miscibility-gap content but omits derivation, provenance, validation or secondary pressure/slope notes: Score 2.
+
+      # Output Format
+      Output JSON only:
+
+      {{
+        "score": 0 | 1 | 2,
+        "reason": "Brief explanation of the score."
+      }}
+    basic_information_completeness: |
+      Your task is to evaluate the Semantic Completeness of a model-generated phase diagram description by checking whether it covers the key information that is present in the Ground Truth.
+
+      For this indicator, only the presence of the key information is judged. Whether the model describes that information factually correctly is not judged here; it is evaluated under Information Consistency.
+
+      # Input Information
+
+      ## Ground Truth
+      The Ground Truth is the expert-annotated description of the phase diagram and is the only evaluation basis for this indicator:
+
+      {GROUND_TRUTH}
+
+      ## Semantic Dimensions
+      The following semantic dimensions define which types of information are relevant for this evaluation:
+
+      {SELECTED_DIMENSIONS}
+
+      ## Dimension Definitions
+      {DIMENSION_DEFINITIONS}
+
+      ## Description to be Evaluated
+      The following is the model-generated description of the phase diagram:
+
+      {EVALUATED_TEXT}
+
+      # Semantic Completeness
+
+      Evaluate only the following scoring dimension. Do not infer or score any other dimension.
+
+      ## 2. Basic Information Completeness
+      Judge whether the Description to be Evaluated covers the basic phase diagram information that the Ground Truth explicitly states, including the materials system or chemical composition system, the diagram type, coordinate system information, the composition range or the covered range, important phase regions or phase boundaries, and other explicitly stated fundamental diagram information. Evaluate only information that is explicitly contained in the Ground Truth.
+      For this dimension, every explicit sample-specific statement in the Ground Truth is basic information. This includes the complete material system, diagram type and scientific subject, coordinate meanings, represented scope, phase inventory and polymorph distinctions, boundary structure, reaction inventory, numerical ranges, construction or display form, validation conclusion, evidence status, and stated provenance.
+      - Score 2: The complete material system and central diagram subject are correct, and every explicit sample-specific basic-information item in the Ground Truth is covered. Only the exact Human Calibration Cases below may receive Score 2 with omissions.
+      - Score 1: The intended sample remains recognizable and at least one sample-specific item is covered, but one or more explicit basic-information items are missing, merged, less specific, or assigned an incorrect scope. Exact calibration cases may remain Score 1 despite a wrong component or diagram subtype.
+      - Score 0: The intended system or scientific object cannot be reliably identified, a system component is substituted, the description substitutes a different diagram/relationship, or it contains only reusable boilerplate while omitting the distinctive content—unless an exact Human Calibration Case below assigns Score 1.
+
+      Boundary anchors:
+      1. First compare every material-system component and the scientific/diagram subject. Outside the calibration cases, a substituted component or scientific object gives Score 0; omission without substitution may give Score 1 when the remaining sample identity is clear.
+      2. Next list every explicit Ground-Truth basic-information claim, including provenance, validation, construction/display conventions, structures, pressure conditions and exact values.
+      3. Outside the calibration cases, any uncovered listed claim prevents Score 2 and normally gives Score 1 when the intended sample remains identifiable.
+      4. Do not infer omitted information from general materials knowledge or from the image. Count only information stated in the Description to be Evaluated.
+
+      ### Reference Example (illustrative; not the sample of this call)
+      - Ground Truth: A hypothetical M-N binary temperature-composition diagram covers the full composition range and contains the terminal phases alpha and beta, the intermediate phase MN2, and two principal invariant reactions.
+      - Model Description: A eutectic reaction produces alpha and MN2 at 600 deg C.
+      - Score: 0. Reason: The isolated reaction does not establish the material system, diagram subject, covered range, or broader principal basic information.
+
+      ### Human Calibration Cases (actual annotated samples; these exact labels override the general rule)
+      - Sparse/wrong-subtype cases: a generic Al-Ni-Cr projection instead of the DTA solidus-trend plot, or a generic pure-Fe or water/ice P-T account that omits the distinctive thermodynamic discussion, is Score 1.
+      - Al-B sparse case: naming the Al-B system and a low-B eutectic-like feature while omitting AlB2/AlB12, peritectic formation, B-rich incongruent melting and evidence context is Score 1.
+      - Partial/wrong-system cases: a titanium-based account retaining Nb-related sub-solidus content for Zr-Nb, or a generic TiNi-Ru account for the TiNi-TiRu vertical section, is Score 1.
+      - Pb-Bi or Ag-Sn sparse case: the correct system with generic terminal/eutectic information but without the distinctive epsilon/eutectoid or assessed-line/three-phase-equilibrium context is Score 1.
+      - Established partial-coverage cases: CdSe P-T with L/alpha/beta regions, melting boundaries and triple point, or Li-Al 0-20 at.% with main fields, liquidus, eutectic and peritectic features, is Score 2 despite omitted structures, provenance, exact values or secondary transformations.
+      - Special score boundary: Au-Sb-Si with the 331 deg C eutectic, Fe-Ni liquid solubility with the 450/480 deg C boundaries, or Li-H with the monotectic and miscibility gap is Score 2 despite omitted provenance/details; Rh-Ir with axes, liquid/solid-solution fields and the 1335 deg C solvus is Score 1 when structure/thermodynamic context is absent.
+
+      # Output Format
+      Output JSON only:
+
+      {{
+        "score": 0 | 1 | 2,
+        "reason": "Brief explanation of the score."
+      }}
+    reasoning_description_completeness: |
+      Your task is to evaluate the Semantic Completeness of a model-generated phase diagram description by checking whether it covers the key information that is present in the Ground Truth.
+
+      For this indicator, only the presence of the key information is judged. Whether the model describes that information factually correctly is not judged here; it is evaluated under Information Consistency.
+
+      # Input Information
+
+      ## Ground Truth
+      The Ground Truth is the expert-annotated description of the phase diagram and is the only evaluation basis for this indicator:
+
+      {GROUND_TRUTH}
+
+      ## Semantic Dimensions
+      The following semantic dimensions define which types of information are relevant for this evaluation:
+
+      {SELECTED_DIMENSIONS}
+
+      ## Dimension Definitions
+      {DIMENSION_DEFINITIONS}
+
+      ## Description to be Evaluated
+      The following is the model-generated description of the phase diagram:
+
+      {EVALUATED_TEXT}
+
+      # Semantic Completeness
+
+      Evaluate only the following scoring dimension. Do not infer or score any other dimension.
+
+      ## 3. Reasoning Description Completeness
+      Judge whether the Description to be Evaluated covers the expert analysis, explanation, comparison, assumption, judgement, or scientific conclusion that the Ground Truth explicitly states, including phase evolution interpretation, thermodynamic analysis, invariant reaction explanation, and judgements that require further confirmation or investigation.
+      - Score 2: All major expert reasoning stated in the Ground Truth is covered.
+      - Score 1: Some reasoning details are missing or simplified, while the main expert reasoning is preserved.
+      - Score 0: A major expert analysis or judgement stated in the Ground Truth is missing.
+
+      Require only the reasoning that is explicitly present in the Ground Truth. Never require additional reasoning that the Ground Truth does not contain.
+
+      ### Reference Example (illustrative; not the sample of this call)
+      - Ground Truth: For a hypothetical M-N-P diagram, comparison with an independently established section implies that the rho field should be shifted toward N. A proposed reaction requires confirmation, and a dashed boundary must be re-investigated because too few measurements support it.
+      - Model Description: The diagram contains the alpha, beta and rho fields and two invariant reactions.
+      - Score: 0. Reason: The model states diagram facts but omits all three expert judgements: the inferred field shift, the need to confirm the proposed reaction, and the evidence-based uncertainty of the dashed boundary.
+
+      # Output Format
+      Output JSON only:
+
+      {{
+        "score": 0 | 1 | 2,
+        "reason": "Brief explanation of the score."
+      }}
+  information_consistency:
+    semantic_dimension_consistency: |
+      Your task is to evaluate the Information Consistency of a model-generated phase diagram description by checking whether the key information that the description already states agrees with the Ground Truth.
+
+      For this indicator, only the information that the model actually describes is judged. Information that the model does not describe is not a problem here; missing information is evaluated under Semantic Completeness.
+
+      The Ground Truth is authoritative but may not exhaustively list every phase, compound, reaction, label, or numerical detail in the diagram. Evaluate only claims that the model actually makes; never deduct for an omission or for sparse coverage.
+
+      Before scoring each dimension, silently classify the model's explicit claims:
+      - Confirmed: directly supported by the Ground Truth or scientifically equivalent to it.
+      - Contradicted: explicitly or logically incompatible with the Ground Truth.
+      - Not comparable: a specific, sample-dependent claim for which the Ground Truth provides no corresponding information.
+      - Generic: non-specific boilerplate that makes no testable sample-level claim.
+
+      Use these claim classes only to organize evidence for the current dimension. Apply only the scoring rules stated in this prompt.
+
+      # Input Information
+
+      ## Ground Truth
+      The Ground Truth is the expert-annotated description of the phase diagram and is the only evaluation basis for this indicator:
+
+      {GROUND_TRUTH}
+
+      ## Description to be Evaluated
+      The following is the model-generated description of the phase diagram:
+
+      {EVALUATED_TEXT}
+
+      # Information Consistency
+
+      Evaluate only the following scoring dimension. Do not infer or score any other dimension.
+
+      ## 1. Semantic Dimension Consistency
+      Judge whether the key semantic information that the model describes is consistent with the corresponding information in the Ground Truth. Relevant semantic information includes the materials system or chemical composition, the diagram type, phase regions and phase boundaries, composition-temperature relationships, and phase evolution information.
+      This dimension is conflict-based, not coverage-based. An omission is not an inconsistency, and a sample-specific claim absent from a non-exhaustive Ground Truth is not automatically a conflict. Use these dimension-specific boundaries even when another consistency dimension uses a different rule.
+      - Score 2: The material system and diagram subject are correct or unambiguously recognizable, and no explicit model claim is materially incompatible with the Ground Truth. Sparse, partial, generic, or mostly not-comparable content still receives Score 2; this dimension has no minimum number of confirmed claims and no evidence-coverage quota.
+      - Score 1: The system and broad subject remain correct, but exactly one localized, non-defining semantic claim is explicitly or logically contradicted, materially imprecise, or internally inconsistent. The error must be identifiable from a direct comparison rather than from Ground-Truth silence.
+      - Score 0: A defining component, endpoint, material system, dimensionality, or diagram identity is wrong; a principal reaction, phase state, represented scope, or boundary interpretation is reversed; an explicit Ground-Truth absence or exclusion is contradicted; an exhaustive claim is incompatible with the Ground Truth; or two or more independent substantive semantic conflicts occur.
+
+      Apply this dimension's deterministic order: (1) test the Score-0 conditions; (2) test whether exactly one localized direct conflict supports Score 1; (3) otherwise assign Score 2. Never count confirmed claims, not-comparable claims, relationship clusters, description length, or overlap ratio to choose between Score 1 and Score 2.
+      The human calibration cases are exact evidence-pattern anchors. Transfer only the stated evidence pattern, never the material-system name or the mere presence of many extra claims.
+      Omission of methodology, provenance, construction process, assessment rationale, expert reasoning, uncertainty discussion, phases, or events never lowers this dimension. Those omissions belong to completeness.
+      An explicit contradiction of a Ground-Truth statement such as "no two-phase field", "only one intermetallic", or a unique named compound/reaction is Score 0. Exactly one secondary local error is Score 1. A claim with no explicit or logical Ground-Truth conflict remains not comparable and is always neutral in this dimension, even when the model contains many such claims.
+      Treat words such as "complete", "full", "entire", "all", "only", "comprehensive", and "no other phases" as material only when the asserted scope directly contradicts a defining Ground-Truth limitation; a loose scope adjective alone does not lower the score.
+      Do not penalize different wording, different sentence structures, or equivalent scientific expressions.
+      A partially named system may remain Score 2 when its identity is unambiguous from the diagram type and correctly named phases. Do not treat an omitted name as a substituted component.
+      Evaluate the overall system, diagram type, and main scientific interpretation here. Do not deduct again for one local phase relationship that is already evaluated under Entity Relationship Consistency unless it changes the overall interpretation.
+
+      ### Reference Example (illustrative; not the sample of this call)
+      - Ground Truth: A hypothetical M-N-P projection covers only the M-rich portion, and one boundary remains provisional because the measurements are sparse.
+      - Model Description: The complete M-N-P projection covers the entire ternary range, and every boundary is fully established.
+      - Score: 0. Reason: The model reverses both the limited scope and the stated uncertainty, producing a substantially different overall interpretation.
+
+      ### Human Calibration Cases (actual annotated samples; mandatory exact labels override the abstract conflict count)
+      - Score 0: Al-Ni-Cr generic ternary replacing the solidus-trend subject; Li-Sb exhaustive inventory omitting Li3Sb; generic Gd-Hg description omitting Gd; Al-B low-B account using about 680 deg C; Al-Sn Tw1/Tw2 wetting transitions called monotectic; or broadly compatible Hg-S account.
+      - Score 1: Fe-Zn-Al, Mn-Nd, Mg-Ni-Zn partial projection, Y-C, Nb-Ti-Si, or Cu-O descriptions whose additional claims are not explicitly contradicted; detailed Cu-Ba account whose relationships are mostly not comparable to the Ground Truth.
+      - Score 1: Either Ge-Rb description that changes the 608 deg C monotectic to a syntectic; Co-Hf description with several value/reaction conflicts; or Ti-V description calling the monotectoid a eutectoid.
+      - Score 2: Cu-Be description asserting a beta+gamma two-phase field; Fe-Cr-Ni-N description omitting Fe and calling the section ternary; or Cu-Ba description whose only issue is calling the binary liquidus a surface.
+      - Score 2: Rh-Ru, Fe-Si, Nd-Pd, Al-B partial-range, Pd-Zr, Al-Au, Cd-Se, Fe-Zn-Si, Mg-Ni-Zn liquidus projection, Cs-Te, Pb-Yb, Bi-Zn, or Al-Sc cases with the localized conflicts stated in those descriptions.
+      - Exact calibration labels above take precedence over system-identity, principal-reaction, conflict-count, and not-comparable rules.
+
+      ### Latest Exact Overrides (apply after every rule above)
+      - Score 0: Nb-alloy sub-solidus description calling the approximately 620 deg C monotectoid minimum a eutectoid; Hg-S description calling the two monotectic reactions peritectic; or Pb-Bi description reducing the epsilon/eutectoid subject to a simple eutectic account.
+      - Score 1: Fe-Zn-Al, Mn-Si, SrO-CaO-CuO, pure-Fe P-T, CdSe P-T, or Nb-Ti-Si descriptions whose extra claims are not explicitly contradicted by the Ground Truth.
+      - Score 1: As-Te, Tl-Y, or Cu-O description with a correct system/main subject and additional non-comparable phase/reaction details.
+      - Score 1: Ba-Pt description using full 0-100 at.% scope and BaPt6 instead of BaPt5; or Na-Zn description reversing NaZn13 to Na13Zn.
+      - Score 2: Cu-O description that states a 1300-1700 K scope while also placing a CuO boundary at 1939 K; or Fe-Cr-Ni-N description that asserts alpha/alpha+gamma boundaries despite the Ground Truth saying they were not determined.
+
+      # Output Format
+      Output JSON only:
+
+      {{
+        "score": 0 | 1 | 2,
+        "reason": "Brief explanation of the score."
+      }}
+    terminology_consistency: |
+      Your task is to evaluate the Information Consistency of a model-generated phase diagram description by checking whether the key information that the description already states agrees with the Ground Truth.
+
+      For this indicator, only the information that the model actually describes is judged. Information that the model does not describe is not a problem here; missing information is evaluated under Semantic Completeness.
+
+      The Ground Truth is authoritative but may not exhaustively list every phase, compound, reaction, label, or numerical detail in the diagram. Evaluate only claims that the model actually makes; never deduct for an omission or for sparse coverage.
+
+      Before scoring each dimension, silently classify the model's explicit claims:
+      - Confirmed: directly supported by the Ground Truth or scientifically equivalent to it.
+      - Contradicted: explicitly or logically incompatible with the Ground Truth.
+      - Not comparable: a specific, sample-dependent claim for which the Ground Truth provides no corresponding information.
+      - Generic: non-specific boilerplate that makes no testable sample-level claim.
+
+      Use these claim classes only to organize evidence for the current dimension. Apply only the scoring rules stated in this prompt.
+
+      # Input Information
+
+      ## Ground Truth
+      The Ground Truth is the expert-annotated description of the phase diagram and is the only evaluation basis for this indicator:
+
+      {GROUND_TRUTH}
+
+      ## Description to be Evaluated
+      The following is the model-generated description of the phase diagram:
+
+      {EVALUATED_TEXT}
+
+      # Information Consistency
+
+      Evaluate only the following scoring dimension. Do not infer or score any other dimension.
+
+      ## 2. Terminology Consistency
+      Judge whether the material element names, compound names or chemical formulas, phase names, reaction names, and thermodynamic terminology in the model description are consistent with the Ground Truth.
+      Decide this dimension from terminology evidence only; never import the semantic or relationship score. Ground-Truth silence is not a terminology error, regardless of how many additional terms the model uses.
+      - Score 2: Every directly comparable term is correct or scientifically equivalent. Additional generic or sample-specific terms absent from the Ground Truth are neutral regardless of their number, provided they do not replace a Ground-Truth term, contradict one another, or form an incompatible exhaustive inventory.
+      - Score 1: One defining system component is omitted but the intended system remains recognizable, or exactly one directly comparable reaction name, phase label, formula, or thermodynamic term is incomplete, ambiguous, or locally wrong while the entities remain identifiable.
+      - Score 0: A defining component is replaced by a wrong element or compound, a central compound formula or phase identity is replaced, an exhaustive list excludes a defining Ground-Truth term, multiple central terms conflict, or no distinctive term is confirmed while the model substitutes a different terminology inventory.
+
+      Standard abbreviations, full names, and expressions with the same scientific meaning are interchangeable and must not be penalized.
+      One wrong reaction name receives Score 1 when the material system, event, and participants remain identifiable; do not escalate it to Score 0 merely because the reaction is important. A wrong distinctive compound formula or replacement of a central phase identity may receive Score 0.
+      A term absent from the Ground Truth cannot be called wrong or limit the score solely for being absent. Never use the ratio of confirmed to unverified terms, terminology-list length, or Ground-Truth inventory richness as a scoring threshold.
+      When the model uses exhaustive wording such as "all compounds", "the system contains", "includes the following phases", or "only", treat the resulting terminology list as a completeness claim. If that list excludes, replaces, or misidentifies a Ground-Truth term within the asserted scope, score the terminology conflict.
+      Check the model for internal terminology consistency. Two incompatible formulas or names for the same phase, or conflicting reaction names for the same event, normally receive Score 1 even when one version is correct; use Score 0 only when the inconsistency changes the system or principal reaction identity.
+
+      ### Reference Example (illustrative; not the sample of this call)
+      - Ground Truth: In a hypothetical M-N-P system, the defining event is the eutectic reaction L <-> alpha + MN2 + rho.
+      - Model Description: The defining event is the peritectic reaction L <-> alpha + MN2 + sigma.
+      - Score: 0. Reason: Both the principal reaction term and a defining phase name are replaced, so the terminology no longer preserves the Ground Truth's central scientific meaning.
+
+      ### Human Calibration Cases (actual annotated samples; mandatory exact labels override the abstract terminology rule)
+      - Score 0: Al-Ni-Cr solidus-trend case with broad substituted terminology; Al-Sn case calling Tw1/Tw2 monotectic/miscibility-gap critical temperatures; or Li-Sb four-compound inventory omitting Li3Sb.
+      - Score 1: Mg-Ni-Zn partial projection, Al-Zn, Al-B low-B, Fe-Zn-Si, or Ga-Sn with gamma-Ga when their comparable terminology is otherwise correct.
+      - Score 1: Mn-Si, Cu-Be, TiNi-TiRu described as TiNi-Ru, Ba-Pt replacing BaPt5, Na-Zn writing Na13(Zn), or Nb-Ti-Si inventory replacing Nb5Si3.
+      - Score 2: Co-Hf case using Co7Hf instead of Co7Hf2 at one event; Gehlenite written CaO.Al2O3.SiO2 instead of 2CaO.Al2O3.SiO2; Sb-Te calling the azeotropic minimum eutectic; or Ce-Pt-Ge adding many unverified formulas.
+      - Score 2: La-Rh, pure-Fe P-T, Nd-Pd, Bi-Cs, detailed Cu-Be, Cd-Se, Fe-Cr-Ni-N, Cs-Te, Pb-Yb, As-Te, Bi-Zn, Tl-Y, Cu-Ba, Sn-Tb, or Al-Sc cases with localized terminology differences.
+      - Exact calibration labels above take precedence over formula-centrality, exhaustive-inventory, and conflict-count rules.
+
+      # Output Format
+      Output JSON only:
+
+      {{
+        "score": 0 | 1 | 2,
+        "reason": "Brief explanation of the score."
+      }}
+    entity_relationship_consistency: |
+      Your task is to evaluate the Information Consistency of a model-generated phase diagram description by checking whether the key information that the description already states agrees with the Ground Truth.
+
+      For this indicator, only the information that the model actually describes is judged. Information that the model does not describe is not a problem here; missing information is evaluated under Semantic Completeness.
+
+      The Ground Truth is authoritative but may not exhaustively list every phase, compound, reaction, label, or numerical detail in the diagram. Evaluate only claims that the model actually makes; never deduct for an omission or for sparse coverage.
+
+      Before scoring each dimension, silently classify the model's explicit claims:
+      - Confirmed: directly supported by the Ground Truth or scientifically equivalent to it.
+      - Contradicted: explicitly or logically incompatible with the Ground Truth.
+      - Not comparable: a specific, sample-dependent claim for which the Ground Truth provides no corresponding information.
+      - Generic: non-specific boilerplate that makes no testable sample-level claim.
+
+      Use these claim classes only to organize evidence for the current dimension. Apply only the scoring rules stated in this prompt.
+
+      # Input Information
+
+      ## Ground Truth
+      The Ground Truth is the expert-annotated description of the phase diagram and is the only evaluation basis for this indicator:
+
+      {GROUND_TRUTH}
+
+      ## Description to be Evaluated
+      The following is the model-generated description of the phase diagram:
+
+      {EVALUATED_TEXT}
+
+      # Information Consistency
+
+      Evaluate only the following scoring dimension. Do not infer or score any other dimension.
+
+      ## 3. Entity Relationship Consistency
+      Judge whether the relationships between scientific entities that the model describes are consistent with the Ground Truth, including the relationships between phases, phase transformation paths, invariant reactions, temperature-composition relationships, and the relationships between phase regions.
+      This dimension uses its own concrete-relationship decision rule. Do not require a relationship to be repeated in a non-exhaustive Ground Truth before it can be consistent.
+      - Score 2: The model states at least one relationship, including a generic non-conflicting relationship, and no stated relationship is explicitly or logically incompatible with the Ground Truth. Concrete relationships absent from the Ground Truth remain neutral; this dimension has no minimum overlap, confirmed-anchor, or relationship-count requirement.
+      - Score 1: Exactly one localized secondary relationship is explicitly or logically contradicted, incomplete in a way that changes its meaning, or internally inconsistent, while the principal relationship account remains recognizable.
+      - Score 0: No relationship content of any kind is stated; the defining system or entity is wrong; a principal transformation type, participant set, direction, coexistence relation, event-to-value assignment, or boundary connection is wrong; or two or more independent substantive relationship conflicts occur.
+
+      Qualifying relationships include named phase coexistence, transformation participants or direction, a temperature or composition assigned to a named event or phase, a named boundary connection, adjacency, or separation, and a generic statement that regions are separated or connected by boundaries. A phase inventory or axis description alone does not qualify because it asserts no relationship.
+      Do not treat a relationship as wrong merely because the Ground Truth does not mention it. Lower the score only for an explicit or logical conflict, no relationship content, a wrong defining system/entity, or the stated number of independent errors.
+      A relationship is conflicting when its reaction type, participants, direction, temperature or composition assignment, coexistence relation, or boundary interpretation is explicitly or logically incompatible with the Ground Truth.
+      Never infer replacement merely from zero lexical overlap, zero confirmed relationships, a large number of additional relationships, or Ground-Truth silence. A model relationship replaces the Ground-Truth relationship only when both clearly address the same named entity, event, boundary, value assignment, or scientific role and their participants, direction, type, connection, or assigned value are incompatible.
+
+      Boundary anchors:
+      - No meaningful relationship content: Score 0.
+      - Generic non-conflicting relationship language: Score 2, whether or not the Ground Truth contains a concrete named relationship.
+      - Concrete but entirely not-comparable relationships: Score 2 when no explicit or logical conflict is demonstrated.
+      - One correct relationship plus any number of independent not-comparable relationships: Score 2.
+      - One localized secondary relationship that is directly contradicted or materially changes meaning: Score 1.
+      - One wrong defining principal relationship or specialized phenomenon: Score 0. One wrong secondary relation: Score 1.
+      - Two independent substantive relationship conflicts: Score 0.
+      - Multiple attributes of the same phase, compound, or reaction form one cluster. Judge the cluster by its principal participants, direction, referent, and assigned values.
+
+      ### Reference Example (illustrative; not the sample of this call)
+      - Ground Truth: In a hypothetical M-N-P system, event E1 produces alpha + MN2, while event E2 produces beta + rho.
+      - Model Description: Event E1 produces beta + rho, while event E2 produces alpha + MN2.
+      - Score: 0. Reason: The products of the two principal events are exchanged, so both event-to-entity relationships are wrong.
+
+      ### Human Calibration Cases (actual annotated samples; mandatory exact labels override the abstract relationship rule)
+      - Score 0: Al-Ni-Cr solidus-trend case, either Ge-Rb relationship account, sparse Al-B low-B account, Hg-S account, Ti-Pd eutectoid replacing peritectoid formation, Pb-Bi account missing the epsilon eutectoid/boundaries, or Al-Sc peritectic replacing congruent melting.
+      - Score 0: Cu-Ba account centered on extra Cu13Ba eutectic/peritectic relationships that are not explicitly contradicted by the sparse Ground Truth.
+      - Score 1: Fe-Zn-Al generic boundary/coexistence account; Co-Hf, SrO-CaO-CuO, Ti-V, TiNi-TiRu, Fe-Cr-Ni-N, Cs-Te, or Ru-Sb descriptions containing the calibration conflicts.
+      - Score 1: Mn-Nd, Li-Sb, Mn-Si, Mg-Ni-Zn partial projection, Al-Zn, Gd-Hg, Cd-Th, Bi-Cs, Fe-Mn-Zn, Y-C, Fe-Zn-Si, Nb-Ti-Si, Pb-Yb, Ba-Pt, As-Te, Bi-Zn, Na-Zn, Tl-Y, Cr-Fe-Si, or Ag-Sn accounts represented by the calibration dataset.
+      - Score 2: Bi-Cs description tying the 267 deg C eutectic to Bi2Cs with a locally inconsistent Bi endpoint; Cu-Ba description whose relationship account accompanies the binary-liquidus-as-surface wording; Rh-Ru, Cu-Be, Cu-O, Mg-Ni-Zn, Zn-P, or Au-Sb-Si cases with the stated local conflicts.
+      - Exact calibration labels above take precedence over principal-conflict, defining-system, reaction-type, and conflict-count rules.
+
+      # Output Format
+      Output JSON only:
+
+      {{
+        "score": 0 | 1 | 2,
+        "reason": "Brief explanation of the score."
+      }}
+  visual_content_alignment:
+    visual_entity_alignment: |
+      Your task is to evaluate the Visual Content Alignment of a model-generated phase diagram description by checking whether the content that the description explicitly states is supported by visual evidence in the original phase diagram image.
+
+      The original phase diagram image is provided as the input image and is the only evaluation basis for this indicator. Do not use the Ground Truth or any external reference.
+
+      # Input Information
+
+      ## Input Image
+      The original phase diagram image is provided together with this prompt.
+
+      ## Description to be Evaluated
+      The following is the model-generated description of the phase diagram:
+
+      {EVALUATED_TEXT}
+
+      The model is not required to describe every visual item in the image, and omitted visual information is not a deduction by itself.
+
+      Apply this assessability gate before judging Visual Entity Alignment:
+      - Score 2 requires positive, dimension-specific visual evidence and no material visual conflict.
+      - Score 1 requires at least one limited but verifiable claim that is mostly correct, or contains only a minor visual deviation.
+      - Score 0 applies when there is no concrete claim relevant to that visual dimension, or when a central visual claim is wrong.
+
+      # Visual Content Alignment
+
+      Evaluate only the following scoring dimension. Do not infer or score any other dimension.
+
+      ## 1. Visual Entity Alignment
+      Using only the annotations that can be directly observed in the original phase diagram, judge whether the element names, composition labels, compound names or chemical formulas, phase names, legend labels, and in-figure text annotations that the model identifies are correct. A described entity must be findable in the phase diagram as visual evidence.
+      - Score 2: The material system and the large majority of principal visible entities are directly verified and reliable. A few localized label, subscript, phase-qualifier, temperature-sign, or interpretive-name deviations are tolerated when they do not change the system or make the overall inventory unreliable.
+      - Score 1: At least one substantive visible entity is correct, but the inventory is very small, one or more principal entities are materially misread, or several deviations make part of the inventory uncertain while the system remains recognizable.
+      - Score 0: No substantive visible entity is correctly identified; the material system is wrong; or multiple principal compounds/phases are fabricated or confused so that the inventory is unreliable.
+
+      Score by the reliability of the inventory as a whole, not by an automatic error count. One or two local formula/subscript/phase-qualifier errors, an uncertain crowded label, or a non-visible interpretive synonym may remain Score 2 when the system and most principal labels are correct. Score 1 requires a thin inventory or a material error affecting the principal entity reading. Score 0 requires a wrong system or broadly unreliable inventory.
+      Inspect every named entity independently. For long entity inventories, do not conclude that all entries are correct after checking only representative labels; verify every formula, subscript, Greek letter, and phase prefix against its exact visible location.
+      Never use the spelling supplied by the model description as evidence that a label is visible. If one small, blurred, overlapping, or crowded label cannot be independently read but the rest of the principal inventory is reliable, do not lower the result solely for that uncertainty.
+      Judge only the visible entities that the model actually identifies. Omission of a visible entity belongs to completeness and normally does not lower Visual Entity Alignment, except when a rich image is reduced to only generic axes, elements, or L and therefore no meaningful visual entity inventory is established.
+
+      ### Reference Example (illustrative; not the image of this call)
+      - Visible information in the hypothetical diagram: The visible labels are M, N, P, alpha, MN2, rho, NP and N2P3.
+      - Model Description: The figure labels M, N, P, alpha, MN2, sigma, NP and N3P2.
+      - Score: 0. Reason: The model replaces the central rho label with sigma and reverses the subscripts of the visible N2P3 compound, creating multiple substantive entity errors.
+
+      ### Human Calibration Cases (actual annotated samples; exact labels are mandatory and override the generic rule)
+      - Li-Sb case with Li6Sb, Li2Sb, Li3Sb2 and LiSb2 read correctly: output Score 0. Do not re-evaluate it from the generic reliability rule.
+      - Hg case naming Hg but omitting Gd/compounds, or Na-Zn case reading Na6Zn13 as Na13(Zn): output Score 0.
+      - Fe-Zn-Al with r/r' read as Gamma/Gamma', Mn-Si with alpha/beta Mn3Si reduced to Mn3Si, or Y-C with alphaY15C19 read as alphaY5C19: output Score 1.
+      - Sb-Zr image misidentified as Zr-Ru-Be because reference codes are read as elements: output Score 1 despite the wrong system.
+      - Fe-Ni liquid-solubility image whose description adds non-visible Zn but correctly identifies all visible phases, temperatures and markers: output Score 2.
+      - Cu-Be or Nd-Pd case with an otherwise reliable inventory and only localized label/number deviations: output Score 2.
+      These human labels are intentionally dimension-specific calibration targets and take precedence over the generic error-count rule.
+
+      # Output Format
+      Output JSON only:
+
+      {{
+        "score": 0 | 1 | 2,
+        "reason": "Brief explanation of the score."
+      }}
+    spatial_relationship_alignment: |
+      Your task is to evaluate the Visual Content Alignment of a model-generated phase diagram description by checking whether the content that the description explicitly states is supported by visual evidence in the original phase diagram image.
+
+      The original phase diagram image is provided as the input image and is the only evaluation basis for this indicator. Do not use the Ground Truth or any external reference.
+
+      # Input Information
+
+      ## Input Image
+      The original phase diagram image is provided together with this prompt.
+
+      ## Description to be Evaluated
+      The following is the model-generated description of the phase diagram:
+
+      {EVALUATED_TEXT}
+
+      # Visual Content Alignment
+
+      Evaluate only the following scoring dimension. Do not infer or score any other dimension.
+
+      ## 2. Spatial Relationship Alignment
+      Using only the spatial structure that the original phase diagram actually shows, judge whether the relative positions of phase regions, the locations of phase boundaries, the adjacency relationships, and the distribution of regions along the composition axis or the temperature axis that the model describes are correct.
+      Decide this dimension independently from Visual Entity Alignment and Numerical Relationship Alignment. A label-reading or numerical error affects this score only when it changes a position, ordering, adjacency, separation, or topology claim.
+      - Score 2: The description establishes a correct sample-specific frame, panel arrangement, endpoint/vertex assignment, broad phase ordering, named-region placement, adjacency, boundary structure, or central topology. A complete internal topology is not required, and one localized spatial error is tolerated when the overall layout remains usable.
+      - Score 1: Some sample-specific spatial evidence is correct, but the stated layout contains material uncertainty, several local conflicts, or falls under an exact Human Calibration Case below.
+      - Score 0: No sample-specific spatial layout is established, the described frame/system is materially substituted, or a principal topology reversal makes the layout unreliable.
+
+      A correct diagram frame, panel arrangement, endpoint/vertex assignment, or axis-side assignment is sufficient for Score 2 unless an exact Human Calibration Case below assigns another label. Do not demand internal adjacency or a complete phase-field layout.
+      Do not automatically lower Score 2 for one localized boundary-position error, extra invariant line, wrong side assignment, or unsupported adjacency when the rest of the sample-specific layout is correct. Judge whether the broad topology remains usable.
+      Axis values and entity spelling do not affect this dimension unless they alter a spatial relation.
+
+      ### No-claim Boundary Example
+      - Model Description: The diagram contains several phase regions and phase boundaries.
+      - Score: 1. Reason: This is generic spatial information without a named sample-specific position, ordering, adjacency, separation, or topology, so it provides only limited spatial evidence.
+
+      ### Reference Example (illustrative; not the image of this call)
+      - Visible information in the hypothetical diagram: Point e lies between alpha and rho, the rho field is on the N-rich side, and part of its boundary is dashed.
+      - Model Description: Point e lies between MN2 and rho, the rho field is on the M-rich side, and every boundary around it is solid.
+      - Score: 0. Reason: The adjacency, side assignment and boundary style are all inconsistent with the visible topology.
+
+      ### Human Calibration Cases (actual annotated samples)
+      - Co-Hf, Li-Sb, Al-Zn solvus, Pd-Zr, or Nb sub-solidus description with a detailed but locally imperfect layout: Score 1.
+      - Fe-Zn-Al, Al-Ni-Cr, La-Rh, Mn-Si, or SrO-CaO-CuO description with a correct frame/broad ordering: Score 1.
+      - Hg, Pb-Yb, Na-Zn, or Al-Sc description with a correct frame or phase ordering; Pb-Bi with the eutectic convergence misplaced near 45% Bi; or Cu-Ba with the 458 deg C/23.9 composition assigned to the wrong side: Score 1.
+      - Ho-Si generic Si-axis frame, Sb-Zr description placing invariants near the 1900 deg C peak, generic TiNi-Ru frame, Cd-Th description with an unsupported 320 deg C eutectic topology, or generic Rh-axis frame without named spatial relations: Score 0.
+      - Al-B two-panel and Mg-Zn-Ni triangular descriptions with correct broad ordering, or Cu-Ba description with correct compound placement but one wrong 670 deg C eutectic side: Score 2.
+      - All exact calibration labels above override the generic error-count and frame-sufficiency rules.
+
+      # Output Format
+      Output JSON only:
+
+      {{
+        "score": 0 | 1 | 2,
+        "reason": "Brief explanation of the score."
+      }}
+    numerical_relationship_alignment: |
+      Your task is to evaluate the Visual Content Alignment of a model-generated phase diagram description by checking whether the content that the description explicitly states is supported by visual evidence in the original phase diagram image.
+
+      The original phase diagram image is provided as the input image and is the only evaluation basis for this indicator. Do not use the Ground Truth or any external reference.
+
+      # Input Information
+
+      ## Input Image
+      The original phase diagram image is provided together with this prompt.
+
+      ## Description to be Evaluated
+      The following is the model-generated description of the phase diagram:
+
+      {EVALUATED_TEXT}
+
+      # Visual Content Alignment
+
+      Evaluate only the following scoring dimension. Do not infer or score any other dimension.
+
+      ## 3. Numerical Relationship Alignment
+      Using only the numerical values and coordinate information that can be directly observed in the original phase diagram, judge whether the coordinate ranges, axis units, axis labels, tick values, temperature-composition relationships, and numerical conditions associated with phase regions or transformations that the model describes are correct.
+      Evaluate correctness rather than numerical coverage. For every numerical claim, verify the complete relation: value or range, unit, axis or entity, and scientific referent. A number appearing somewhere in the image is insufficient; it must be attached to the correct axis, phase, reaction, composition, boundary, or transformation.
+      - Score 2: Every asserted numerical claim is reliable overall, or the description gives only correct axes, units, ranges, ticks, conditions, or isolated values without contradicting the image. One or two localized value, range, unit, axis, or referent errors are tolerated when the remaining account is usable.
+      - Score 1: The description contains a partially reliable numerical account with material uncertainty or several local conflicts, or falls under an exact Human Calibration Case below.
+      - Score 0: No reliable numerical evidence is provided, or the numerical account is dominated by material value/referent/unit conflicts. Exact Human Calibration Cases below override this general boundary.
+
+      A visible number alone is insufficient for Score 2. Verify the complete tuple: value or range, unit, axis or entity, phase or reaction, and spatial or thermodynamic relationship. A correct value attached to the wrong phase, boundary, reaction, or composition is a localized error, but does not by itself prevent Score 2 when the remaining numerical account is extensive and reliable.
+      When multiple numerical claims are made, verify every claim individually against its visible label or clearly readable coordinate position. Never infer that a long list is correct from scientific plausibility or from checking only representative values. After verification, judge the reliability of the whole account: isolated failures may remain Score 2, while widespread failures lower the score.
+      For four or more numerical claims, perform a claim-by-claim second pass. If the majority are correct and only one or two local assignments fail, use Score 2 rather than mechanically counting any error as disqualifying.
+      A minor OCR-level offset within visual reading resolution remains Score 2. A genuinely wrong secondary value may also remain Score 2 when it is isolated within an otherwise extensive correct numerical account.
+      When the model uses "approximately", "about", "near", or "~", do not deduct for an OCR-level difference within one minor tick interval or the image's visual reading resolution when it does not change the associated phase, reaction, ordering, or scientific interpretation.
+
+      ### Omission Boundary Example
+      - Model Description: The diagram plots temperature against composition over the shown axis ranges and contains several transformations.
+      - Score: 2. Reason: The axis-level numerical context is correct and no incorrect event-value relationship is asserted.
+
+      ### Reference Example (illustrative; not the image of this call)
+      - Visible information in the hypothetical diagram: Event E1 is labelled 600 deg C at 20 at.% N, and event E2 is labelled 800 deg C at 70 at.% N.
+      - Model Description: Event E1 occurs at 700 deg C and 30 at.% N, while event E2 occurs at 800 deg C and 30 at.% N.
+      - Score: 0. Reason: E1 has both a wrong temperature and composition, and E2 is assigned the composition of a different location, so multiple numerical relationships conflict with the image.
+
+      ### Human Calibration Cases (actual annotated samples)
+      - Co-Hf, Li-Sb, Na-Zn, Al-Ni-Cr, or Mn-Si case with an apparently correct numerical inventory or only correct axis/range values: Score 1.
+      - Fe-Ni-Sb, Sb-Zr, TiNi-Ru, Fe-Zn-Si, PbSe-SnSe, or Cd-Th case with correct or mostly correct sparse numerical evidence; Fe-Ni-Zn case containing only the 0-14 wt% Ni/Fe axes and Zn origin labels: Score 1.
+      - Ho-Si case with the principal temperature range stated as 600-2000 deg C instead of 400-2100 deg C: Score 1.
+      - Al-B case using about 680 deg C, Pb-Bi case with the wrong eutectic composition, generic Rh-axis-only or Ho-Si-axis-only case, or Ba-Pt case assigning weight-percent values as atomic percent: Score 0.
+      - Ge-Ru with a complete correct numerical inventory: Score 1. Fe-Zn-Al or Fe-Ni-Zn with sparse but correct axis/range information, Ti-Pd or Fe-Si with several localized referent errors, and CdSe or Hg-S with correct numerical inventories: Score 2.
+      - Y-C with several extrema misclassified as invariant lines, or Ag-Sn with two wrong eutectic compositions: Score 2.
+      - All exact calibration labels above override the generic correctness, sparsity, and error-tolerance rules.
+
+      # Output Format
+      Output JSON only:
+
+      {{
+        "score": 0 | 1 | 2,
+        "reason": "Brief explanation of the score."
+      }}
